@@ -159,6 +159,72 @@ export default function App() {
     }
   };
 
+const handleExportCSV = () => {
+  if (products.length === 0) {
+    alert('Aucun produit à exporter!');
+    return;
+  }
+
+  let csv = 'Nom,Prix,Stock\n';
+  products.forEach(p => {
+    csv += `"${p.name}",${p.price},${p.stock}\n`;
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'sokopay_produits.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  alert('Produits exportés! 📊');
+};
+
+const handleImportCSV = (event: any) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e: any) => {
+    try {
+      const text = e.target.result;
+      const lines = text.split('\n');
+      const newProducts: Product[] = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        
+        const [name, priceStr, stockStr] = lines[i].split(',');
+        const price = parseInt(priceStr);
+        const stock = parseInt(stockStr);
+
+        if (name && price && stock) {
+          newProducts.push({
+            id: Date.now().toString() + i,
+            name: name.replace(/"/g, ''),
+            price,
+            stock
+          });
+        }
+      }
+
+      if (newProducts.length === 0) {
+        alert('Format CSV invalide! Utilise: Nom,Prix,Stock');
+        return;
+      }
+
+      const updatedProducts = [...products, ...newProducts];
+      setProducts(updatedProducts);
+      localStorage.setItem('sokopay_products', JSON.stringify(updatedProducts));
+      alert(`${newProducts.length} produits importés! 🎉`);
+    } catch (error) {
+      alert('Erreur lors de l\'importation!');
+    }
+  };
+  reader.readAsText(file);
+};
+
+
   const handlePayment = (method: string) => {
     if (!user) return;
     
@@ -231,6 +297,25 @@ export default function App() {
       <h2 className="text-3xl font-bold text-gray-800">Gestion des Produits</h2>
 
       <div className="bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
+        <div className="flex gap-3 mb-4">
+          <button
+            onClick={handleExportCSV}
+            className="flex-1 bg-green-600 text-white py-2 rounded-lg font-bold hover:bg-green-700 transition"
+          >
+            📥 Exporter CSV
+          </button>
+          <label className="flex-1">
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleImportCSV}
+              style={{ display: 'none' }}
+            />
+            <button className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition cursor-pointer">
+              📤 Importer CSV
+            </button>
+          </label>
+        </div>
         <h3 className="text-xl font-bold mb-4">{editingProduct ? 'Modifier Produit' : 'Ajouter Produit'}</h3>
         
         <div className="space-y-4">
